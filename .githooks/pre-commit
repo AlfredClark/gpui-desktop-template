@@ -1,4 +1,16 @@
 #!/bin/sh
 # Local quality gate: formatting + lints. Not CI.
 cargo fmt --all -- --check || exit 1
+# dprint is a single binary; cover its default install locations.
+for d in "$HOME/.dprint/bin" "$HOME/.cargo/bin"; do
+    case ":$PATH:" in
+        *":$d:"*) ;;
+        *) PATH="$d:$PATH" ;;
+    esac
+done
+command -v dprint >/dev/null 2>&1 || {
+    echo "dprint not found (see docs/workflow.md)" >&2
+    exit 1
+}
+dprint check || exit 1
 cargo clippy --workspace --all-targets -- -D warnings || exit 1

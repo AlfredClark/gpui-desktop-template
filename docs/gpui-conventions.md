@@ -50,7 +50,7 @@ impl RenderOnce for HomeView {
 ## 主题与布局
 
 - 颜色/圆角/间距走 `cx.theme()` 语义 token，布局走 rem helpers
- （`p_4/gap_3/text_sm`，`size_full/flex_1/min_h_0`）。
+  （`p_4/gap_3/text_sm`，`size_full/flex_1/min_h_0`）。
 - 纵向用 `v_flex()`，内容区 `flex_1().min_h_0()` 让出收缩权。
 - 选中态画在元素自身表面，不加前缘色条。
 

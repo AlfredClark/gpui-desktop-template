@@ -5,15 +5,23 @@
 ```sh
 cargo run -p app                                # 运行
 cargo fmt --all -- --check                      # 格式门禁
+dprint check                                     # md/toml/json/yaml 门禁
 cargo clippy --workspace --all-targets -- -D warnings  # lint 门禁
+dprint fmt                                       # 手动修复 dprint 格式问题
 ```
 
 格式配置见 `rustfmt.toml`（edition 2024，`max_width = 100`，全稳定项）；
 编辑器缩进与换行见 `.editorconfig`。
+非 Rust 文件（md/toml/json/yaml）由 `dprint.json` 管（行宽统一 100，
+插件版本锁定，md 正文不重排）。安装单二进制并保证在 `PATH` 中：
+
+```sh
+curl -fsSL https://dprint.dev/install.sh | sh   # 或 cargo install dprint
+```
 
 ## 本地 hook
 
-提交前自动跑两条门禁，任一变红即拦截：
+提交前自动跑三条门禁，任一变红即拦截：
 
 ```sh
 git config core.hooksPath .githooks   # 每克隆一次配一次，不入库
@@ -34,13 +42,14 @@ chore: add git-cliff changelog configuration
 
 ## Changelog
 
-`cliff.toml` 配 `tag_pattern = "v*"`（workspace 根 tag）。
-日常只预览，`CHANGELOG.md` 在发版前统一更新：
+`cliff.toml` 配 `tag_pattern = "v*"`（workspace 根 tag），`header` 模板供 workflow 回填。
+本地只预览（只读，不写文件）：
 
 ```sh
-git cliff --prepend CHANGELOG.md --unreleased   # 预览
-git cliff --prepend CHANGELOG.md                # 发版前入库（必须 --prepend）
+git cliff --unreleased
 ```
+
+`CHANGELOG.md` 不入库，由 release workflow 在发版时生成。
 
 ## Edition 策略
 

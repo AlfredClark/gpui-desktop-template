@@ -23,15 +23,15 @@ crates/about          # feature：关于
 
 标准文件角色（按需取用，无对应负担不建空文件）：
 
-| 文件 | 角色 |
-| --- | --- |
-| `lib.rs` | 唯一出口，只做 `pub use`；内部文件可重组而不改外部导入 |
-| `model.rs` | 纯领域状态与转换，无 `Window`/`Context`，可单元测试 |
-| `*_view.rs` | `Entity` 持有 + `Render` 组合，按 `render_<region>` 分区 |
-| `commands.rs` | Action 定义 + owner 方法；菜单/工具栏/快捷键同调一处 |
-| `*_dialog.rs` | 归属本 feature 的编辑弹窗（如 `rename_dialog.rs`） |
-| `*_delegate.rs` | Table/List 的 delegate；view 不兼任数据模型 |
-| `service.rs` | 仅有 IO 才建；`cx.spawn` + revision 丢弃过期结果 |
+| 文件            | 角色                                                     |
+| --------------- | -------------------------------------------------------- |
+| `lib.rs`        | 唯一出口，只做 `pub use`；内部文件可重组而不改外部导入   |
+| `model.rs`      | 纯领域状态与转换，无 `Window`/`Context`，可单元测试      |
+| `*_view.rs`     | `Entity` 持有 + `Render` 组合，按 `render_<region>` 分区 |
+| `commands.rs`   | Action 定义 + owner 方法；菜单/工具栏/快捷键同调一处     |
+| `*_dialog.rs`   | 归属本 feature 的编辑弹窗（如 `rename_dialog.rs`）       |
+| `*_delegate.rs` | Table/List 的 delegate；view 不兼任数据模型              |
+| `service.rs`    | 仅有 IO 才建；`cx.spawn` + revision 丢弃过期结果         |
 
 按复杂度取三档：
 
@@ -69,10 +69,10 @@ builder 构造用 `with_`。
 
 ## 状态归属
 
-| 状态 | 归属 |
-| --- | --- |
-| 导航选中页 | `AppView` |
+| 状态                | 归属                                              |
+| ------------------- | ------------------------------------------------- |
+| 导航选中页          | `AppView`                                         |
 | 输入/表格等保持行为 | 各 view 持有的 `Entity<State>` + `_subscriptions` |
-| 纯领域数据与转换 | 各 feature 的 `model.rs` |
+| 纯领域数据与转换    | 各 feature 的 `model.rs`                          |
 
 `render` 只做组合：读状态、派生展示值、拼元素。解析、IO、业务变更放命名方法或 service，经 `cx.spawn` 异步回填时带 revision 丢弃过期结果。

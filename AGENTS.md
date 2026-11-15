@@ -16,8 +16,9 @@ crates/home | settings | about  # feature：各页 model + view，扁平 crate
 ```sh
 cargo run -p app                                          # 运行
 cargo fmt --all -- --check                                # 格式
+dprint check                                              # md/toml/json/yaml 格式
 cargo clippy --workspace --all-targets -- -D warnings     # lint
-git cliff --prepend CHANGELOG.md --unreleased             # changelog 预览
+git cliff --unreleased                                    # changelog 预览（只读）
 ```
 
 提交格式 `type(scope): subject`（英文，scope 用 crate 名），见 `docs/workflow.md`。

@@ -8,7 +8,7 @@ name = "app"
 path = "src/main.rs"
 
 [dependencies]
+about = { path = "../about" }
 gpui-kit = "0.9.1"
 home = { path = "../home" }
 settings = { path = "../settings" }
-about = { path = "../about" }
