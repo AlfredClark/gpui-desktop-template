@@ -1,5 +1,5 @@
 use gpui_kit::component::ActiveTheme as _;
-use gpui_kit::{div, App, IntoElement, ParentElement as _, RenderOnce, Styled as _, Window};
+use gpui_kit::{App, IntoElement, ParentElement as _, RenderOnce, Styled as _, Window, div};
 
 #[derive(IntoElement)]
 pub struct HomeView;

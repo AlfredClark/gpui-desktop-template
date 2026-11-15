@@ -3,7 +3,7 @@ mod navigation;
 
 use app::AppView;
 use gpui_kit::component::TitleBar;
-use gpui_kit::{application, init, open_window, AppContext as _, WindowDecorations, WindowOptions};
+use gpui_kit::{AppContext as _, WindowDecorations, WindowOptions, application, init, open_window};
 
 fn main() {
     application()

@@ -1,7 +1,7 @@
 use about::AboutView;
 use gpui_kit::component::tab::{Tab, TabBar};
-use gpui_kit::component::{v_flex, ActiveTheme as _, TitleBar};
-use gpui_kit::{div, Context, IntoElement, ParentElement as _, Render, Styled as _, Window};
+use gpui_kit::component::{ActiveTheme as _, TitleBar, v_flex};
+use gpui_kit::{Context, IntoElement, ParentElement as _, Render, Styled as _, Window, div};
 use home::HomeView;
 use settings::SettingsView;
 
