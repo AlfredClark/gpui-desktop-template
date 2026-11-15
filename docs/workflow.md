@@ -55,7 +55,7 @@ git cliff --unreleased
 
 `.github/workflows/ci.yml`：push/PR 到 main 自动跑 `lint`（fmt + dprint）
 与 `validate`（仅 ubuntu：clippy/check/test），分支保护只需盯 `Passed` 门禁。
-工具链版本唯一来源是 `rust-toolchain.toml`。
+工具链 pin 在 `rust-toolchain.toml`（1.99.1），workflow 内 `dtolnay/rust-toolchain` 同值引用，两处保持一致。
 
 发版流程：
 
