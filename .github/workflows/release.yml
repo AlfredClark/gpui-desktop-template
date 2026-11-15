@@ -103,7 +103,7 @@ jobs:
         # 版本必须与 rust-toolchain.toml 保持一致
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.99.1
+          toolchain: 1.100.0
 
       - name: Cache
         uses: Swatinem/rust-cache@v2
