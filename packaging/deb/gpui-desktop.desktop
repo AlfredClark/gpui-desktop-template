@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=GPUI Desktop
+Exec=/usr/lib/gpui-desktop/app
+Icon=gpui-desktop
+Terminal=false
+Categories=Utility;

@@ -1,0 +1,232 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to release (e.g. v1.2.3)."
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.resolve_tag.outputs.tag }}
+      app_version: ${{ steps.resolve_tag.outputs.version }}
+    steps:
+      - name: Resolve
+        id: resolve_tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            RAW_TAG="${GITHUB_REF_NAME}"
+            if [ -z "$RAW_TAG" ]; then
+              RAW_TAG="${GITHUB_REF#refs/tags/}"
+            fi
+          else
+            RAW_TAG="${{ inputs.version }}"
+          fi
+
+          TAG=$(echo "$RAW_TAG" | xargs)
+          VERSION="${TAG#v}"
+
+          echo "Detected Tag: '$TAG'"
+          echo "Parsed Version: '$VERSION'"
+
+          if [ -z "$TAG" ] || [ -z "$VERSION" ]; then
+            echo "::error::Failed to extract a valid tag or version. (RAW_TAG: '$RAW_TAG')"
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.resolve_tag.outputs.tag }}
+
+      - name: Verify
+        shell: bash
+        run: |
+          APP_VERSION=$(cargo metadata --format-version 1 --no-deps | python3 -c "import json,sys; print([p['version'] for p in json.load(sys.stdin)['packages'] if p['name']=='app'][0])")
+          EXPECTED_VERSION="${{ steps.resolve_tag.outputs.version }}"
+
+          echo "App Version: $APP_VERSION"
+          echo "Expected Version from Tag: $EXPECTED_VERSION"
+
+          if [ "$APP_VERSION" != "$EXPECTED_VERSION" ]; then
+            echo "::error::app version ($APP_VERSION) does not match tag version ($EXPECTED_VERSION)!"
+            exit 1
+          fi
+
+  build:
+    name: Build (${{ matrix.target }})
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x86_64
+            os: ubuntu-latest
+            artifact-glob: |
+              dist/*.tar.gz
+              dist/*.deb
+          - target: macos-arm64
+            os: macos-latest
+            artifact-glob: |
+              dist/*.dmg
+          - target: windows-x86_64
+            os: windows-latest
+            artifact-glob: |
+              dist/*.zip
+              dist/*-setup.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare.outputs.release_tag }}
+
+      - name: Toolchain
+        # 版本唯一来源是 rust-toolchain.toml，不在此重复声明
+        uses: dtolnay/rust-toolchain@master
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> target
+
+      - name: Dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ clang libfontconfig-dev libwayland-dev \
+            libwebkit2gtk-4.1-dev libxkbcommon-x11-dev libx11-xcb-dev \
+            libssl-dev libzstd-dev libasound2-dev vulkan-validationlayers libvulkan1
+
+      - name: Build
+        run: cargo build --release --locked -p app
+
+      # 以下打包均为未签名产物：应用名/标识为占位，正式分发前替换并接入签名
+      - name: Package (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: |
+          mkdir -p dist/portable/GpuiDesktop/bin
+          cp target/release/app dist/portable/GpuiDesktop/bin/app
+          tar -czf "dist/gpui-desktop-${VERSION}-linux-x64.tar.gz" -C dist/portable GpuiDesktop
+
+          ROOT=dist/deb-root
+          mkdir -p "$ROOT/DEBIAN" "$ROOT/usr/lib/gpui-desktop" \
+            "$ROOT/usr/share/applications" "$ROOT/usr/share/icons/hicolor/256x256/apps"
+          install -m 0755 target/release/app "$ROOT/usr/lib/gpui-desktop/app"
+          cp packaging/deb/gpui-desktop.desktop "$ROOT/usr/share/applications/"
+          cp assets/icons/icon-256.png "$ROOT/usr/share/icons/hicolor/256x256/apps/gpui-desktop.png"
+          cat > "$ROOT/DEBIAN/control" <<CONTROL
+          Package: gpui-desktop
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Example Maintainer <maintainer@example.com>
+          Description: A GPUI desktop application template
+          CONTROL
+          dpkg-deb --root-owner-group --build "$ROOT" "dist/gpui-desktop_${VERSION}_amd64.deb"
+
+      - name: Package (macOS)
+        if: matrix.os == 'macos-latest'
+        env:
+          VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: |
+          APP=dist/macos/GpuiDesktop.app
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp target/release/app "$APP/Contents/MacOS/app"
+          cat > "$APP/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleName</key><string>GpuiDesktop</string>
+            <key>CFBundleDisplayName</key><string>GpuiDesktop</string>
+            <key>CFBundleIdentifier</key><string>com.example.gpuidesktop</string>
+            <key>CFBundleExecutable</key><string>app</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+            <key>CFBundleVersion</key><string>1</string>
+          </dict></plist>
+          PLIST
+          plutil -lint "$APP/Contents/Info.plist"
+          mkdir -p dist/dmg-root
+          cp -R "$APP" dist/dmg-root/GpuiDesktop.app
+          hdiutil create -volname GpuiDesktop -srcfolder dist/dmg-root -ov -format UDZO "dist/GpuiDesktop-${VERSION}-macos-arm64.dmg"
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: |
+          New-Item -ItemType Directory -Force dist/windows | Out-Null
+          Copy-Item target/release/app.exe dist/windows/app.exe
+          Compress-Archive -Path dist/windows/* -DestinationPath "dist/GpuiDesktop-$env:VERSION-windows-x64.zip" -Force
+          choco install innosetup -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=$env:VERSION packaging/packaging.iss
+          Move-Item dist/GpuiDesktop-Setup.exe "dist/GpuiDesktop-$env:VERSION-windows-x64-setup.exe"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          path: ${{ matrix.artifact-glob }}
+          if-no-files-found: error
+
+      - name: Attest
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ matrix.artifact-glob }}
+
+  release:
+    name: Publish Release Notes
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare.outputs.release_tag }}
+          fetch-depth: 0
+
+      - name: Download
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
+
+      - name: Changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip all --tag ${{ needs.prepare.outputs.release_tag }}
+        env:
+          OUTPUT: release-notes.md
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.release_tag }}
+          body_path: release-notes.md
+          files: dist/*
+          draft: false

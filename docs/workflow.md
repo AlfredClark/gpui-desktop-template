@@ -51,6 +51,28 @@ git cliff --unreleased
 
 `CHANGELOG.md` 不入库，由 release workflow 在发版时生成。
 
+## CI 与 Release
+
+`.github/workflows/ci.yml`：push/PR 到 main 自动跑 `lint`（fmt + dprint）
+与 `validate`（仅 ubuntu：clippy/check/test），分支保护只需盯 `Passed` 门禁。
+工具链版本唯一来源是 `rust-toolchain.toml`。
+
+发版流程：
+
+1. 把 `[workspace.package] version` bump 到目标版，commit。
+2. 打 tag `vX.Y.Z` 并 push（workflow 也支持手动输入版本号触发）。
+3. `release.yml` 校验 `app` 版 == tag 版 → 三 OS 打包
+   （linux `tar.gz` + `.deb`、mac `.dmg`、windows `zip` + Inno setup）
+   → git-cliff 生成 notes → publish release。
+
+打包均为未签名占位产物：应用名/标识（`GpuiDesktop`、`com.example.gpuidesktop`、
+`gpui-desktop`）、图标（`assets/icons/icon-256.png` 占位图）发货前替换；
+正式分发再接入签名/notary。本地复刻版本校验：
+
+```sh
+cargo metadata --format-version 1 --no-deps | python3 -c "import json,sys; print([p['version'] for p in json.load(sys.stdin)['packages'] if p['name']=='app'][0])"
+```
+
 ## Edition 策略
 
 workspace 经 `[workspace.package] edition = "2024"` 统一，

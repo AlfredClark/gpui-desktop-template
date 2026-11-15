@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Toolchain
+        # 版本唯一来源是 rust-toolchain.toml，不在此重复声明
+        uses: dtolnay/rust-toolchain@master
+        with:
+          components: rustfmt
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Dprint
+        uses: dprint/check@v2
+
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Dependencies
+        # gpui-kit 官方文档在 Ubuntu 24.04 上验证过的依赖（ALSA 仅 speech 特性需要，此处保留以保构建成功）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ clang libfontconfig-dev libwayland-dev \
+            libwebkit2gtk-4.1-dev libxkbcommon-x11-dev libx11-xcb-dev \
+            libssl-dev libzstd-dev libasound2-dev vulkan-validationlayers libvulkan1
+
+      - name: Toolchain
+        # 版本唯一来源是 rust-toolchain.toml，不在此重复声明
+        uses: dtolnay/rust-toolchain@master
+        with:
+          components: clippy
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> target
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Check
+        run: cargo check --workspace --locked --all-targets
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+  ci-passed:
+    name: Passed
+    runs-on: ubuntu-latest
+    needs: [lint, validate]
+    if: always()
+    steps:
+      - name: Evaluate Results
+        run: |
+          echo "Lint:     ${{ needs.lint.result }}"
+          echo "Validate: ${{ needs.validate.result }}"
+
+          # 任一必需检查失败/取消都拦住，否则会"安全通过"
+          if [[ "${{ needs.lint.result }}" =~ ^(failure|cancelled)$ ]] || \
+             [[ "${{ needs.validate.result }}" =~ ^(failure|cancelled)$ ]]; then
+            echo "::error::One or more essential checks failed."
+            exit 1
+          fi
+          echo "All checks passed!"
+          exit 0
