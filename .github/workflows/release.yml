@@ -119,7 +119,7 @@ jobs:
             libssl-dev libzstd-dev libasound2-dev vulkan-validationlayers libvulkan1
 
       - name: Build
-        run: cargo build --release --locked -p app
+        run: cargo build --profile release-small --locked -p app
 
       # 以下打包均为未签名产物：应用名/标识为占位，正式分发前替换并接入签名
       - name: Package (Linux)
@@ -128,13 +128,13 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.app_version }}
         run: |
           mkdir -p dist/portable/GpuiDesktop/bin
-          cp target/release/app dist/portable/GpuiDesktop/bin/app
+          cp target/release-small/app dist/portable/GpuiDesktop/bin/app
           tar -czf "dist/gpui-desktop-${VERSION}-linux-x64.tar.gz" -C dist/portable GpuiDesktop
 
           ROOT=dist/deb-root
           mkdir -p "$ROOT/DEBIAN" "$ROOT/usr/lib/gpui-desktop" \
             "$ROOT/usr/share/applications" "$ROOT/usr/share/icons/hicolor/256x256/apps"
-          install -m 0755 target/release/app "$ROOT/usr/lib/gpui-desktop/app"
+          install -m 0755 target/release-small/app "$ROOT/usr/lib/gpui-desktop/app"
           cp packaging/deb/gpui-desktop.desktop "$ROOT/usr/share/applications/"
           cp assets/icons/icon-256.png "$ROOT/usr/share/icons/hicolor/256x256/apps/gpui-desktop.png"
           cat > "$ROOT/DEBIAN/control" <<CONTROL
@@ -155,7 +155,7 @@ jobs:
         run: |
           APP=dist/macos/GpuiDesktop.app
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-          cp target/release/app "$APP/Contents/MacOS/app"
+          cp target/release-small/app "$APP/Contents/MacOS/app"
           cat > "$APP/Contents/Info.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -182,7 +182,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force dist/windows | Out-Null
-          Copy-Item target/release/app.exe dist/windows/app.exe
+          Copy-Item target/release-small/app.exe dist/windows/app.exe
           Compress-Archive -Path dist/windows/* -DestinationPath "dist/GpuiDesktop-$env:VERSION-windows-x64.zip" -Force
           choco install innosetup -y --no-progress
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=$env:VERSION "/DMyAppSrc=$env:GITHUB_WORKSPACE\dist\windows" "/O$env:GITHUB_WORKSPACE\dist" packaging/packaging.iss

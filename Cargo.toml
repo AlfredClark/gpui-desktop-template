@@ -5,3 +5,45 @@ members = ["crates/*"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+
+# Build tiers.
+# - `cargo run -p app`: daily dev; framework deps optimized, app code stays debuggable.
+# - `cargo run --profile dev-fast -p app`: stock dev, fastest compile, slower runtime.
+# - `cargo build --profile release-small -p app`: release artifacts (size).
+# - `cargo build --profile release-perf -p app`: release artifacts (performance).
+[profile.dev.package]
+gpui-pre = { opt-level = 3 }
+gpui-component = { opt-level = 3 }
+gpui-kit = { opt-level = 3 }
+gpui-kit-assets = { opt-level = 3 }
+gpui-pre-platform = { opt-level = 3 }
+rustybuzz = { opt-level = 3 }
+taffy = { opt-level = 3 }
+ttf-parser = { opt-level = 3 }
+
+# Stock dev settings: inherits dev, then resets the framework overrides above.
+[profile.dev-fast]
+inherits = "dev"
+
+[profile.dev-fast.package]
+gpui-pre = { opt-level = 0 }
+gpui-component = { opt-level = 0 }
+gpui-kit = { opt-level = 0 }
+gpui-kit-assets = { opt-level = 0 }
+gpui-pre-platform = { opt-level = 0 }
+rustybuzz = { opt-level = 0 }
+taffy = { opt-level = 0 }
+ttf-parser = { opt-level = 0 }
+
+[profile.release-small]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.release-perf]
+inherits = "release"
+opt-level = 3
+lto = true
+codegen-units = 1

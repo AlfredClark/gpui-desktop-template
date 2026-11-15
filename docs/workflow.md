@@ -19,6 +19,18 @@ dprint fmt                                       # 手动修复 dprint 格式问
 curl -fsSL https://dprint.dev/install.sh | sh   # 或 cargo install dprint
 ```
 
+## 构建档位
+
+档位定义见根 `Cargo.toml` 的 `[profile.*]`：
+
+```sh
+cargo run -p app                                # dev：日常开发，框架依赖已优化
+cargo run --profile dev-fast -p app             # dev-fast：纯 stock dev，编译最快
+cargo build --profile release-small --locked -p app  # 发版体积档（release 管线用它）
+cargo build --profile release-perf --locked -p app   # 发版性能档
+ls -la target/debug/app target/release-small/app     # 体积对比
+```
+
 ## 本地 hook
 
 提交前自动跑三条门禁，任一变红即拦截：
