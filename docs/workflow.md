@@ -56,6 +56,8 @@ git cliff --unreleased
 `.github/workflows/ci.yml`：push/PR 到 main 自动跑 `lint`（fmt + dprint）
 与 `validate`（仅 ubuntu：clippy/check/test），分支保护只需盯 `Passed` 门禁。
 工具链 pin 在 `rust-toolchain.toml`（1.99.1），workflow 内 `dtolnay/rust-toolchain` 同值引用，两处保持一致。
+部分第三方 action（如 `upload/download-artifact`、`softprops/action-gh-release`）
+上游仍是 Node 20 构建，runner 会给出 deprecation 警告但不影响执行，等上游发布 node24 构建后再升级。
 
 发版流程：
 

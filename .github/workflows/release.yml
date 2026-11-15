@@ -180,11 +180,12 @@ jobs:
         env:
           VERSION: ${{ needs.prepare.outputs.app_version }}
         run: |
+          $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force dist/windows | Out-Null
           Copy-Item target/release/app.exe dist/windows/app.exe
           Compress-Archive -Path dist/windows/* -DestinationPath "dist/GpuiDesktop-$env:VERSION-windows-x64.zip" -Force
           choco install innosetup -y --no-progress
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=$env:VERSION packaging/packaging.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=$env:VERSION "/DMyAppSrc=$env:GITHUB_WORKSPACE\dist\windows" "/O$env:GITHUB_WORKSPACE\dist" packaging/packaging.iss
           Move-Item dist/GpuiDesktop-Setup.exe "dist/GpuiDesktop-$env:VERSION-windows-x64-setup.exe"
 
       - name: Upload
